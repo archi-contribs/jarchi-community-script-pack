@@ -1,0 +1,26 @@
+load(__DIR__ + "treemap.lib.js");
+
+var padding_top = window.prompt("Set top padding (30 is the default)", 30);
+if (!padding_top) {
+	exit();
+} else {
+	// Workaround to convert to a number
+	padding_top *= 1;
+}
+
+var padding = window.prompt("Set internal padding (10 is the default)", 10);
+if (!padding) {
+	exit();
+} else {
+	// Workaround to convert to a number
+	padding *= 1;
+}
+
+var layout = window.prompt("Which layout do you want? ('auto', 'col' or 'row')", "auto");
+if (!layout) {
+	exit();
+}
+
+$(selection).filter("element").add($(selection).filter("archimate-diagram-model").children("element")).each(function(e) {
+	treemap(e, {"layout": layout, "padding": padding, "padding_top": padding_top, "aspect_ratio": 1.8, "debug": false});
+});

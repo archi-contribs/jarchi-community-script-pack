@@ -1,0 +1,10 @@
+var response = window.confirm("This script will delete any element or relationship not used in at least one view. Continue?");
+
+if (!response)
+  exit();
+
+$("concept").each(function(e) {
+  if($(e).objectRefs().isEmpty()) {
+    e.delete();
+  }
+});

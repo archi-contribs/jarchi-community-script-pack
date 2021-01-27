@@ -1,0 +1,47 @@
+var response = window.confirm("This script will swap ends on selected relationships, and will update all views in which they appear. Continue?");
+
+if (!response)
+  exit();
+
+selection.filter('relationship').each(function(o) {swapRelationshipEnds(concept(o))});
+
+function swapRelationshipEnds(r) {
+  // Check if allowed
+  if ($.model.isAllowedRelationship(r.type, r.target.type, r.source.type)) {
+    // Change type temporarily (some intermediate states are not valid otherwise)
+    var origType = r.type;
+    r.type = "association-relationship";
+    
+    // Swap source and target
+    var origSource = r.source;
+    var origTarget = r.target;
+    r.source = origTarget;
+    r.target = origSource;
+
+    // Restore type
+    r.type = origType;
+    
+    // Swap Bendpoints (if any)
+    $(r).objectRefs().each(function(o) {
+      bps = o.relativeBendpoints;
+      o.deleteAllBendpoints();
+      var i;
+      for (i = 0; i < bps.length; i++) {
+        bp = bps[bps.length-i-1];
+        new_bp = {};
+        new_bp.startX = bp.endX;
+        new_bp.startY = bp.endY;
+        new_bp.endX = bp.startX;
+        new_bp.endY = bp.startY;
+        o.addRelativeBendpoint(new_bp, i);
+      }
+    });
+  }
+}
+
+function concept(o) {
+  if(o.concept)
+    return o.concept;
+  else
+    return o;
+}

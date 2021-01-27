@@ -1,0 +1,29 @@
+var factor = window.prompt("Resize factor for objects?", 2);
+if (!factor) {
+	exit();
+}
+
+var textFactor = window.prompt("Resize factor for text?", 2);
+if (!textFactor) {
+	exit();
+}
+
+var view = selection.filter("archimate-diagram-model").first();
+
+$(view).children().not("relationship").each(function(o) {
+  resizeObjectAndItsChildren(o);
+});
+
+function resizeObjectAndItsChildren(obj) {
+  var bounds = obj.bounds;
+  
+  bounds.x *= factor;
+  bounds.y *= factor;
+  bounds.width *= factor;
+  bounds.height *= factor;
+  
+  obj.bounds = bounds;
+  obj.fontSize *= textFactor;
+  
+  $(obj).children().each(function(o) {resizeObjectAndItsChildren(o)});
+}

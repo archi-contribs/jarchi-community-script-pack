@@ -1,0 +1,529 @@
+<!--
+Single-page HTML Export
+
+Created with Archi (https://www.archimatetool.com) and the following jArchi script:
+https://github.com/archi-contribs/jarchi-single-page-html-export
+
+Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie - MIT License
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>{{modelTitle}}</title>
+
+<!--
+    <link rel="stylesheet" href="../resources/roboto.css">
+    <link rel="stylesheet" href="../resources/icon.css">
+    <link rel="stylesheet" href="../resources/picnic-custom.css">
+-->
+		<style>
+			{{roboto}}
+			{{icon}}
+			{{picnic}}
+		</style>
+	  <style>
+/* Application wide configuration */
+			/* Unfortunately IE11 doesn't support CSS vars, so values will be forced through templating system
+			   When supporting IE11 will be out of scope, it will be possible to revert to CSS vars
+	  	:root {
+	  		--sidebar-bg-color: #37474f;
+	  		--sidebar-color: #DDDDDD;
+	  		--sidebar-width: 350px;
+	  		--sidebar-margin: 10px;
+	  		--sidebar-footer-height: 0px;
+	  		--header-height: 60px;
+	  		--header-bg-color: #0074D9;
+	  		--header-color: #fff;
+	  		--main-bg-color: #fff;
+	  		--main-color: #000;
+	  		--main-margin: 20px;
+	  		--main-header-margin: 35px;
+	  		--main-header-bg-color: #eceff1;
+	  		--main-header-color: #546e7a;
+	  	}
+			*/
+
+/* Generic style */
+		  body {
+			  font-family: 'Roboto';
+			  margin: 0; 							/* needed for Sharepoint/OneDrive preview */
+		  }
+		  label {
+		  	cursor: pointer;
+		  }
+
+/* Utilities */
+  		.right {
+				float: right;
+			}
+			.left {
+				float: left;
+			}
+			.text-right {
+				text-align: right;
+			}
+			.spacer {
+				/* Used only inside a "flex" container */
+				margin-right: auto;
+				margin-left: auto;
+			}
+			table.fixed {
+				table-layout: fixed;
+			}
+
+/* Icons */
+		  .icon {
+		  	font-family: 'Icon';		/* 'Icon' font is based on a FontAwesome subset */
+  			font-size: 27px;				/* main size of the icon, can be overriden */
+				height: 1.7em; 					/* make it square */
+				width: 1.7em; 					/* make it square */
+				font-style: normal; 		/* needed if <i> tags are used */
+				text-align: center; 		/* icon is centered */
+				line-height: 1.7; 			/* line height might have to be fine-tuned */
+				display: inline-block; 	/* we want icons as blocks, but inline */
+		  }
+  		.icon:hover {
+				background: #ffffff3d;	/* light background on hover */
+				border-radius: 50%;			/* round background */
+			}
+			/* icon font uses ligature which makes it easier to select icon */
+		  .icon.menu::before { content: "\f0c9"; }	/* navicon */
+		  .icon.close::before { content: "\f00d"; }	/* close */
+		  .icon.gear::before { content: "\f013"; }	/* cog */
+		  .icon.book::before { content: "\f02d"; }	/* book */
+		  .icon.table::before { content: "\f0ce"; }	/* table */
+		  .icon.chart::before { content: "\f080"; }	/* bar-chart */
+
+/* Override some Picnic defaults */
+		  /* Picnic Tabs */
+	  	.tabs {
+		  	margin-top: {{mainMargin}};	/* set some space above tabs */
+		  	text-align: center;					/* center tabs' headers */
+		  }
+			.tabs > input + label {
+				padding: 0 25px 18px 25px;	/* set some space between tabs' headers and below*/
+				text-transform: uppercase;	/* tabs' headers are uppercase */
+				color: #aaaaaa;							/* non selected tabs' headers color */
+			}
+			.tabs > input:checked + label {
+				color: #666666;							/* selected tab's header color */
+				border-bottom: 2px solid #0074D9;	/* selected tab's header has a blue bottom border */
+			}
+		  .tabs > .row {
+		  	text-align: left;						/* tabs' content is left aligned (needed because tabs are centered) */
+				margin-top: 18px;						/* must be equal to tabs' header bottom padding */
+				padding-top: 25px;					/* set some space above tabs' content */
+				border-top: 1px solid #e0e0e0;	/* draw a line between tabs' headers and tabs' content */
+				transition: none;						/* no transition */
+			}
+			/* Picnic Tables */
+			table {
+				/* set borders (other border are managed at cell level) */
+				border-left: 1px solid #dddddd;
+				border-top: 1px solid #dddddd;
+			}
+			th {
+				background: #FFF;				/* unset background */
+				font-weight: 700;
+				color: #666666;
+			}
+			tr, tr:nth-child(even) {
+				background: #FFF;				/* unset background */
+			}
+			th, td {
+				/* set borders (other border are managed at table level) */
+				border-right: 1px solid #dddddd;
+				border-bottom: 1px solid #dddddd;
+			}
+
+/* Navigation Behavior */
+		  /* hide some elements by default */
+		  .hidden
+		  /* which report mode? */
+		  , #views:not(:checked) ~ * .views
+		  , #queries:not(:checked) ~ * .queries
+		  , #dataviz:not(:checked) ~ * .dataviz
+		  /* do we run in sharepoint/onedrive preview? */
+		  , #javascript:not(:checked) ~ * .js-only
+		  /* is mardown enabled? */
+		  , #markdown:checked ~ * .txt
+		  , #markdown:not(:checked) ~ * .md {
+		  	display: none;
+		  }
+
+/* Expandable Behavior */
+		  .expandable {
+		  	width: 100%;						/* by default use full width */
+				transition: all .3s;		/* make switching state a bit fun */
+		  }
+		  #sidebar:checked ~ .expandable {
+				margin-left: {{sidebarWidth}};				/* add some space for sidebar */
+				width: calc(100% - {{sidebarWidth}});	/* reset width */
+		  }
+
+/* Sidebar Style */
+		  .sidebar {
+				position: fixed; 				/* make it stick, even on scroll */
+				top: 0;									/* stick to top */
+				height: 100%;						/* takes all vertical space */
+				background-color: {{sidebarBgColor}};
+		  	color: {{sidebarColor}};
+		  	width: {{sidebarWidth}};
+		  }
+		  #hide-sidebar {
+		  	position: absolute;			/* close button is fixed so that any header can go below */
+		  	top: 8px;								/* (header-height - icon-heigh) / 2 */
+		  	/* visual space inside icon (~10px) should be taken into account so
+				   we remove it from right margin */
+		  	right: calc({{mainMargin}} - 10px);
+		  }
+		  .sidebar nav.secondary {
+		  	height: calc(100% - {{headerHeight}} - {{sidebarFooterHeight}});
+		  	overflow: auto;					/* we want scrollbar in main sidebar navs */
+		  	padding: 0 {{sidebarMargin}};
+		  	margin-top: {{headerHeight}};
+		  }
+			.sidebar nav.primary {
+				position: fixed;				/* our footer is fixed on the bottom */
+				bottom: 0;
+				height: {{sidebarFooterHeight}};
+				width: {{sidebarWidth}};
+				text-align: center;
+				background: #00000033;	/* use transparency for darker background */
+				display: flex;					/* this is the trick to middle align buttons and title */
+			}
+			.sidebar nav.primary > * {
+			  display: inline-block;	/* block (to set height/width) and inline (no newline on <h>) */
+				margin-top: auto;				/* magic happens... */	
+				margin-bottom: auto;		/* ...here */
+				color: #aaaaaa;					/* default icon color is graker */
+			}
+			#views:checked ~ * nav.primary > label[for=views]
+		  , #queries:checked ~ * nav.primary > label[for=queries]
+		  , #dataviz:checked ~ * nav.primary > label[for=dataviz] {
+		  	color: {{sidebarColor}};
+		  }
+			.sidebar ::-webkit-scrollbar {
+				width: 10px;						/* thin but not too much */
+			}
+			.sidebar ::-webkit-scrollbar-track {
+				background: #ffffff22;	/* scrollbar track is lighter than background */
+			}
+			.sidebar ::-webkit-scrollbar-thumb {
+				background: #00000088;	/* thumb is darker than background */
+			}
+			.sidebar ::-webkit-scrollbar-thumb:hover {
+				background: #000000dd;	/* on hover, thums is even more darker */
+			}
+
+/* Common Top Header Style */
+			.top-header {
+				position: fixed;				/* headers are fixed on top */
+				top: 0;
+				height: {{headerHeight}};
+			}
+
+/* Main-Header Style */
+			#main-header {
+				display: flex;					/* this is the trick to middle align buttons and title */
+			}
+			#main-header > * {
+			  display: inline-block;	/* block (to set height/width) and inline (no newline on <h>) */
+				margin-top: auto;				/* magic happens... */	
+				margin-bottom: auto;		/* ...here */
+			}
+			#show-sidebar {
+				/* visual space inside icon (~10px) should be taken into account so
+				   we remove it from left margin and we set a negative right margin */
+				margin-left: calc({{mainMargin}} - 10px);
+				margin-right: calc(-1 * ({{mainMargin}} - 10px));
+		  }
+		  #sidebar:checked ~ * #show-sidebar {
+		  	display: none;
+		  }
+			.title {
+				/* use same margin as main. works in both cases (opened/closed)
+				   only because 'show-sidebar' icon has a negative right margin */
+				margin-left: {{mainMargin}};
+			}
+		  #show-preferences {
+		  	/* visual space inside icon (~10px) should be taken into account so
+				   we remove it from right margin */
+				margin-right: calc({{mainMargin}} - 10px);
+		  }
+
+/* Main-section Style */
+			#main-header {
+				background-color: {{headerBgColor}};
+				color: {{headerColor}};
+			}
+		  main {
+		  	/* Todo: check if similar behavior is obtained
+		  	   without position:fixed and overflow:auto */
+				position: fixed; 				/* Make it stick, even on scroll */
+				top: {{headerHeight}}; /* Same as top-header's height */
+		  	overflow: auto;					/* we want scrollbar in main section */
+		  	width: 100%;						/* Todo: really needed? */
+				height: calc(100% - {{headerHeight}});	/* Todo: really needed? */
+		  	background-color: {{mainBgColor}};
+		  	color: {{mainColor}};
+		  	padding: {{mainMargin}};
+		  	padding-top: 0;
+		  }
+
+/* Main Content */
+		  article header {
+				margin: 0 calc(-1 * {{mainMargin}});
+				padding: {{mainHeaderMargin}} {{mainMargin}};
+				background-color: {{mainHeaderBgColor}};
+				color: {{mainHeaderColor}};
+		  }
+		  article header * {
+		  	/* hide/reveal rules use display:table-row which suppress margins and padding.
+		  	   simulating this on other headers to get a similar rendering */
+		  	margin: 0;
+		  	padding: 0;
+		  }
+		  .views img {
+				max-width: 100%;
+				margin-top: {{mainMargin}};	/* only set top margin because bottom is set by tabs */
+			}
+
+/* Tree */
+		  div.tree {
+				/* Unfortunately IE11 doesn't support CSS vars, so values will be forced through templating system
+			   When supporting IE11 will be out of scope, it will be possible to revert to CSS vars */
+		  	/*--tree-margin: 1.3em;*/		/* is equal to the icon width with a small additional space */
+		  	padding-left: {{treeMargin}};
+		  	font-size: 0.9em;				/* use a slightly smaller font */
+		  	line-height: 1em;				/* use a smaller line-height (but add spacing between labels) */
+		  }
+			div.tree input:not(:checked) + * + div {
+				display: none;					/* hide folder content when not checked */
+			}
+			div.tree div {
+				padding-left: {{treeMargin}};
+			}
+			div.tree label {
+				display: block;					/* folders and views' name should start on a new line */
+				margin-bottom: 0.3em;		/* add space between labels */
+			}
+			div.tree label::before {
+				font-family: 'Icon';		/* let's add some space on left for an icon */
+				font-weight: normal;		/* should not be impacted by bold (selected) label */
+				display: inline-block;	/* needed to set its width */
+  			margin-left: calc(-1 * {{treeMargin}});
+  			width: {{treeMargin}};
+			}
+			div.tree label.folder::before {
+				content: "\f07b";				/* folder */
+				color: #ffc73f;					/* orange taken from original Archi folder icon */
+			}
+			div.tree input:checked + label.folder::before {
+				content: "\f07c"; 			/* folder-open */
+			}
+			div.tree label.view::before {
+				content: "\f1e1";				/* share-alt-square (that's the best I found to suggest a view) */
+				color: #65a8e3;					/* blue taken from original Archi view icon */
+			}
+
+/* Toggle Switch */
+			label.switch::before {
+		  	font-family: 'Icon';		/* use icon font */
+				font-size: 35px;				/* seems to be just right */
+				margin-top: -0.3em;			/* provide the best rendering so far */
+				display: inline-block;	/* needed for transform to work */
+				color: #DDDDDD;					/* light grey */
+				transform: rotate(180deg);	/* when off, the toggle icon is reversed */
+				content: "\f205";				/* 'toggle-on' from FontAwesome */
+				transition: color 0.1s;
+			}
+			input:checked ~ label.switch::before
+			, #markdown:checked ~ * label.switch[for=markdown]::before {
+				transform: rotate(0deg);				/* when on, the toggle icon is used as-is */
+				color: {{headerBgColor}};	/* use the main accent color */
+			}
+
+/* Generated hidden/reveal rules */
+			#id-1:checked ~ * label[for=id-1]
+			{{visibilityRulesBold}} {
+				font-weight: 700;				/* selected view label is bold in tree */
+			}
+			#id-model:checked ~ * .id-model
+			{{visibilityRulesReveal}} {
+				display: table-row;			/* has to be table-row because we use it to reveal rows */
+			}
+	  </style>
+  </head>
+	<body>
+		<!-- All inputs must be at the begining of the page (CSS rules uses 'input ~ *' selector) -->
+		<!-- Radio inputs used to select the current 'mode' (View Visualizer, Query Tool, DataVisualization) -->
+	  <input id='views'   class="hidden" type='radio' name='nav' checked>
+	  <input id='queries' class="hidden" type='radio' name='nav'>
+	  <input id='dataviz' class="hidden" type='radio' name='nav'>
+		<!-- Checkbox used to show/hide the sidebar -->
+		<input id="sidebar" class="hidden" type="checkbox" checked>
+		<!-- Checkbox checked only when JavaScript is enabled -->
+		<input id="javascript" class="hidden" type="checkbox">
+		<!-- Checkbox used to enable/disable markdown rendering for documentation -->
+		<input id="markdown" class="hidden" type="checkbox" checked>
+
+		<!-- One checkbox per view -->
+		<input id='id-model' type='radio' name='views' checked>
+		{{inputCheckbox}}
+
+		<!-- Modal dialogs -->
+		<div class="modal">
+			<input id="preferences" type="checkbox">
+			<label for="preferences" class="overlay"></label>
+			<div>
+				<header>
+				  <h3>Preferences</h3>
+				  <label for="preferences" class="close">&times;</label>
+				</header>
+				<section style="min-width:500px;min-height:100px;">
+					<div class="flex" >
+						<div class="four-fifth">
+							Use Markdown for documentations:
+						</div>
+						<div class="fifth text-right">
+							<label for="markdown" class="switch"></label>
+						</div>
+					</div>
+				</section>
+				<footer>
+				  <label for="preferences" class="button right">
+				    OK
+				  </label>
+				</footer>
+			</div>
+		</div>
+
+		<!-- Report eally starts here with the sidebar -->
+		<aside class="sidebar">
+			<label for="sidebar" id="hide-sidebar" class="icon close"></label>
+			<nav class="secondary views">
+				<header class="top-header">
+					<h3>Content</h3>
+				</header>
+				<div class="tree">
+					{{treeContent}}
+				</div>
+			</nav>
+			<nav class="secondary queries">
+				<header class="top-header">
+					<h3>Query</h3>
+				</header>
+			</nav>
+			<nav class="secondary dataviz">
+				<header class="top-header">
+					<h3>Data Visualization</h3>
+				</header>
+			</nav>
+			<nav class="primary">
+				<span class="spacer"></span>
+				<label for='views' data-tooltip="Model Content" class="tooltip-top">
+					<i class="icon book"></i>
+				</label>
+				<span class="spacer"></span>
+				<label for='queries' data-tooltip="Query Model" class="js-only tooltip-top">
+					<i class="icon table"></i>
+				</label>
+				<span class="js-only spacer"></span>
+				<label for='dataviz' data-tooltip="Reports" class="js-only tooltip-top">
+					<i class="icon chart"></i>
+				</label>
+				<span class="js-only spacer"></span>
+			</nav>
+		</aside>
+
+		<header id="main-header" class="top-header expandable">
+			<label for="sidebar" id="show-sidebar" class="icon menu"></label>
+			<label for="id-model">
+				<h3 class="title">{{modelTitle}}</h3>
+			</label>
+			<span class="spacer"></span>
+			<label for="preferences" id="show-preferences" class="icon gear"></label>
+		</header>
+
+		<main class="expandable">
+			<article class="views">
+				<header>
+					<h2 class="hidden id-model">{{modelTitle}}</h2>
+					{{viewTitles}}
+				</header>
+
+				<img class="hidden id-model"/>
+				{{viewDiagrams}}
+
+				<div class="tabs three">
+					<input id='view-documentation' type='radio' name='view-detail' checked />
+					<label for="view-documentation" class="pointer">Documentation</label>
+					<input id='view-elements' type='radio' name='view-detail'>
+					<label for="view-elements" class="pointer">Elements</label>
+					<input id='view-relationships' type='radio' name='view-detail'>
+					<label for="view-relationships" class="pointer">Relationships</label>
+					<div class="row">
+						<div>
+							<div class="hidden id-model">
+								<div class="txt">{{modelPurposeText}}</div>
+								<div class="md">{{modelPurposeMarkdown}}</div>
+							</div>
+							{{viewDocumentations}}
+						</div>
+
+						<div>
+							<table class="full fixed">
+								<thead>
+									<tr>
+										<th class="fourth">Name
+										<th class="fourth">Type
+										<th class="half">Documentation
+								<tbody>
+									{{elements}}
+							</table>
+						</div>
+
+						<div>
+							<table class="full fixed">
+								<thead><tr>
+									<th class="sixth">Name
+									<th class="sixth">Type
+									<th class="sixth">Source
+									<th class="sixth">Target
+									<th class="third">Documentation
+								<tbody>
+									{{relationships}}
+							</table>
+						</div>
+					</div>
+				</div>
+			</article>
+			<article class="queries">
+				<header>
+					<h2>Queries</h2>
+				</header>
+			</article>
+			<article class="dataviz">
+				<header>
+					<h2>Data Visualization</h2>
+				</header>
+			</article>
+		</main>
+
+		<script>
+			// If javascript is enabled (ie. this report is NOT opened from
+			// within SharePoint or OneDrive), let's check 'javascript' input
+			document.getElementById("javascript").checked = true;
+		</script>
+	</body>
+</html>
+
+
+
+
+
+
+

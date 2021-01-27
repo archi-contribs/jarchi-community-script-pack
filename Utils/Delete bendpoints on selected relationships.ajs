@@ -1,0 +1,3 @@
+selection.filter("relationship").each(function(o) {
+  o.deleteAllBendpoints()
+})

@@ -1,0 +1,69 @@
+/*
+ * Merge multiple concepts (and delete others)
+ * 
+ * (c) 2020 Jean-Baptiste Sarrodie
+ * 
+ * Version 1.1 (2020/01/20) Add an option to keep only the content of the "target" concept
+ * Version 1.0 (2019/11/12) First version published
+ *
+ * Known limitation: works only on elements, not relationships
+ */
+
+console.show();
+console.clear();
+
+var el_selection = selection.filter("element");
+
+if(el_selection.size() < 2) {
+  window.alert("You have to select at least two elements to run this script. Note: merging relationships is not supported for the moment.");
+  exit();
+}
+
+var list = "Which element do you want to keep (enter its index)?";
+var index = 1;
+
+el_selection.each(function(o) {
+  list += "\n  ("+index+") "+o.name;
+  index++
+})
+ 
+var answer = window.prompt(list, "1");
+ 
+if(answer) {
+  var relaxed = window.confirm('By default, only documentation and properties of the target element are saved (those of merged elements are cleared). Click Ok for this behavior or Cancel if you want a "strict" mode where they are copied into target element.');
+
+  var merge_target = el_selection.get(answer-1);
+  var to_be_deleted = $("#null");
+ 
+  el_selection.not($(merge_target)).each(function(o) {
+    console.log('Merging "', o.name, '" into "', merge_target.name, '"');
+    // We don't want to delete while iterating on the collection, so create
+    // another collection containing the element (not object) to delete
+    to_be_deleted.add(concept(o));
+    if (relaxed) {
+      removeDocAndProps(concept(o));
+    }
+    concept(merge_target).merge(concept(o));
+  });
+  
+  // Deletion loop
+  to_be_deleted.each(function(e) {
+    e.delete();
+  });
+} else {
+  console.log("Merge cancelled");
+}
+ 
+function concept(o) {
+  if(o.concept)
+    return o.concept;
+  else
+    return o;
+}
+
+function removeDocAndProps(c) {
+  c.documentation = "";
+  c.prop().forEach(function(p) {
+    c.removeProp(p);
+  });
+}

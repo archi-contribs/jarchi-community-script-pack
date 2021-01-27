@@ -1,0 +1,35 @@
+// Find DiagramComponents for a given element in a given view
+var getDiagramComponents = function(v, e) {
+    return $(v).find("concept").filter(function(o) {
+        return o.concept.id == e.id;
+    });
+}
+
+// Checks if a view contains a visual connection from src and tgt visual objects
+var contains = function(r, src, tgt) {
+    found = false;
+    
+    $(r).objectRefs().each(function(o) {
+        if (o.source.id == src.id && o.target.id == tgt.id) {
+            found = true;
+        }
+    });
+    
+    return found;;
+}
+
+
+// Iterate through selected views to add relationships which exist in the model but not in the view
+$(selection).filter("archimate-diagram-model").each(function(v) {
+    $(v).find("element").each(function(e) {
+        $(e.concept).rels().each(function(r) {
+            getDiagramComponents(v,r.source).each(function(src) {
+                getDiagramComponents(v,r.target).each(function(tgt) {
+                    if (! contains(r, src, tgt)) {
+                        v.add(r, src, tgt);
+                    }
+                });
+            });
+        });
+    });
+});

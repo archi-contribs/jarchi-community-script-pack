@@ -1,0 +1,218 @@
+// Generate Single-page HTML Export
+//
+// https://github.com/archi-contribs/jarchi-single-page-html-export
+//
+// Requires jArchi - https://www.archimatetool.com/blog/2018/07/02/jarchi/
+//
+// This script creates a single HTML page which contains views contained into
+// selected folders. This HTML page makes heavy use of CSS tricks to create
+// a dynamic web application which doesn't rely on JavaScript.
+// This non-JS approach is by design to allow the file to be previewed when
+// stored on Onedrive Pro, MsTeams or SharePoint Document Library.
+//
+// Copyright (c) 2020 Phillip Beauvoir & Jean-Baptiste Sarrodie
+//
+// Permission is hereby granted, free of charge, to any person
+// obtaining a copy of this software and associated documentation
+// files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the
+// Software is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+
+load(__DIR__ + 'libs/nashorn-polyfills.js');
+load(__DIR__ + 'libs/underscore-min.js');
+load(__DIR__ + 'libs/marked.min.js');
+
+console.show();
+console.clear();
+
+// Use Mustache.js-style templating
+_.templateSettings = {
+  interpolate: /\{\{(.+?)\}\}/g
+};
+
+// Set Markdown rendering options
+var mdOptions = {
+  gfm: true,
+  breaks: true,
+  smartLists: true,
+  smartypants: true
+};
+
+var roboto = readFully(__DIR__ + 'resources/roboto.css', 'UTF-8');
+var icon = readFully(__DIR__ + 'resources/icon.css', 'UTF-8');
+var picnic = readFully(__DIR__ + 'resources/picnic-custom.css', 'UTF-8');
+
+var tplMainReport = _.template(readFully(__DIR__ + 'templates/main-report.html', 'UTF-8'));
+var tplVisibilityRuleBold = _.template(readFully(__DIR__ + 'templates/visibility-rule-bold.tpl', 'UTF-8'));
+var tplVisibilityRuleReveal = _.template(readFully(__DIR__ + 'templates/visibility-rule-reveal.tpl', 'UTF-8'));
+var tplInputCheckbox = _.template(readFully(__DIR__ + 'templates/input-checkbox.tpl', 'UTF-8'));
+var tplTreeView = _.template(readFully(__DIR__ + 'templates/model-tree-view.tpl', 'UTF-8'));
+var tplTreeFolder = _.template(readFully(__DIR__ + 'templates/model-tree-folder.tpl', 'UTF-8'));
+var tplViewTitle = _.template(readFully(__DIR__ + 'templates/view-title.tpl', 'UTF-8'));
+var tplViewDiagram = _.template(readFully(__DIR__ + 'templates/view-diagram.tpl', 'UTF-8'));
+var tplDocumentation = _.template(readFully(__DIR__ + 'templates/documentation.tpl', 'UTF-8'));
+var tplElement = _.template(readFully(__DIR__ + 'templates/element.tpl', 'UTF-8'));
+var tplRelationship = _.template(readFully(__DIR__ + 'templates/relationship.tpl', 'UTF-8'));
+
+var visibilityRulesBold = '';
+var visibilityRulesReveal = '';
+var inputCheckbox = '';
+var treeFolder = '';
+var treeContent = '';
+var viewTitles =  '';
+var viewDiagrams = '';
+var viewDocumentations = '';
+var viewsIdsByConceptId = {};
+var elements = '';
+var elementsCollection;
+var relationships = '';
+var relationshipsCollection;
+
+var allFolders = $('folder');
+var viewsFolder = $(model).children().filter('folder.Views');
+var viewFolders = viewsFolder.find('folder');
+var nonViewFolders = allFolders.not(viewsFolder).not(viewFolders);
+
+var folders = selection.filter("folder").not(nonViewFolders);
+
+if(! folders.size()) {
+  folders = viewsFolder;
+  console.log("All views have been selected.");
+}
+
+var filePath = window.promptSaveFile({ title: "Save as HTML file", filterExtensions : [ "*.html" , "*.*"], fileName : model.name + ".html" });
+
+if(!filePath) {
+  console.log('User cancelled.');
+  exit();
+}
+
+_.chain(folders).sortBy(function(f) { return f.name; }).each(function(f) {
+  exportViews(f);
+});
+
+function exportViews(folder) {
+  console.log('Exporting "', folder.name, '"...');
+  var previousContent = treeContent;
+  treeContent = '';
+  _.chain($(folder).children('folder')).sortBy(function(f) { return f.name; }).each(function(f) {
+    exportViews(f)
+  });
+  _.chain($(folder).children('view')).sortBy(function(v) { return v.name; }).each(function(v) {
+    // Generate report's fragments
+    treeContent += tplTreeView({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
+    visibilityRulesBold += tplVisibilityRuleBold({viewId: 'id-'+v.id});
+    visibilityRulesReveal += tplVisibilityRuleReveal({viewId: 'id-'+v.id});
+    inputCheckbox += tplInputCheckbox({viewId: 'id-'+v.id});
+    viewTitles += tplViewTitle({viewId: 'id-'+v.id, viewName: _.escape(v.name)});
+    viewDiagrams += tplViewDiagram({viewId: 'id-'+v.id, viewImage: $.model.renderViewAsBase64(v, "PNG")});
+    viewDocumentations += tplDocumentation({
+      viewId: 'id-'+v.id,
+      documentationText: _.escape(v.documentation).replace(/\n/g, '<br>'),
+      documentationMarkdown: marked(_.escape(v.documentation), mdOptions)
+    });
+    
+    // Update lists of elements and relationships
+    $(v).find('element').each(function(e) {
+      if(elementsCollection) {
+        if(!elementsCollection.contains(e.concept)) elementsCollection.add($(e.concept));
+      } else {
+        elementsCollection = $(e.concept);
+      }
+      viewsIdsByConceptId[e.concept.id] += ' id-'+v.id;
+    });
+    $(v).find('relationship').each(function(r) {
+      if(relationshipsCollection) {
+        if(!relationshipsCollection.contains(r.concept)) relationshipsCollection.add($(r.concept));
+      } else {
+        relationshipsCollection = $(r.concept);
+      }
+      viewsIdsByConceptId[r.concept.id] += ' id-'+v.id;
+    });
+  });
+  treeContent = tplTreeFolder({folderId: 'id-'+folder.id, folderName: _.escape(folder.name), folderContent: treeContent});
+  treeContent = previousContent + treeContent;
+}
+
+_.chain(elementsCollection).sortBy(function(e) { return e.name; }).each(function(e) {
+    elements += tplElement({
+    viewsIds: viewsIdsByConceptId[e.id],
+    elementName: _.escape(e.name),
+    elementType: properCase(e.type),
+    elementDocumentationText: _.escape(e.documentation).replace(/\n/g, '<br>'),
+    elementDocumentationMarkdown: marked(_.escape(e.documentation), mdOptions)
+    });
+});
+
+_.chain(relationshipsCollection).sortBy(function(r) { return r.name; }).each(function(r) {
+    relationships += tplRelationship({
+    viewsIds: viewsIdsByConceptId[r.id],
+    relationshipName: _.escape(r.name),
+    relationshipType: properCase(r.type),
+    relationshipSource: _.escape(r.source.name),
+    relationshipTarget: _.escape(r.target.name),
+    relationshipDocumentationText: _.escape(r.documentation).replace(/\n/g, '<br>'),
+    relationshipDocumentationMarkdown: marked(_.escape(r.documentation), mdOptions)
+    });
+});
+
+var mainReport = tplMainReport({
+  roboto: roboto,
+  icon: icon,
+  picnic: picnic,
+  modelTitle: _.escape(model.name),
+  visibilityRulesBold: visibilityRulesBold,
+  visibilityRulesReveal: visibilityRulesReveal,
+  inputCheckbox: inputCheckbox,
+  treeContent: treeContent,
+  viewTitles: viewTitles,
+  viewDiagrams: viewDiagrams,
+  modelPurposeText: _.escape(model.purpose).replace(/\n/g, '<br>'),
+  modelPurposeMarkdown: marked(_.escape(model.purpose), mdOptions),
+  viewDocumentations: viewDocumentations,
+  elements: elements,
+  relationships: relationships,
+  sidebarBgColor: '#37474f',
+	sidebarColor: '#DDDDDD',
+	sidebarWidth: '350px',
+	sidebarMargin: '10px',
+	sidebarFooterHeight: '0px',
+	headerHeight: '60px',
+	headerBgColor: '#0074D9',
+	headerColor: '#fff',
+	mainBgColor: '#fff',
+	mainColor: '#000',
+	mainMargin: '20px',
+	mainHeaderMargin: '35px',
+	mainHeaderBgColor: '#eceff1',
+	mainHeaderColor: '#546e7a',
+	treeMargin: '1.3em'
+});
+
+$.fs.writeFile(filePath, mainReport, 'UTF-8');
+
+console.log('Export terminated.');
+
+function properCase(str) {
+  return str.replace(
+    /\w*/g,
+    function(txt) {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    }
+  ).replace('-', ' ');
+}

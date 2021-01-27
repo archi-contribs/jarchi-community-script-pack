@@ -1,0 +1,57 @@
+// Import Java types
+var File = Java.type("java.io.File");
+
+// Show and clear console
+console.show();
+console.clear();
+
+// Initialize some variables
+var dirPath = window.promptOpenDirectory({ title: "Export into..." });
+
+selection.filter("folder").each(function(folder) {
+  console.log('Starting export of "', folder.name, '" under "', dirPath, '"...');
+  exportViews(folder, dirPath);
+});
+
+console.log('Export terminated.');
+
+
+// Generic functions
+function exportViews(folder, parentDirectory) {
+  var directory = mkdir(parentDirectory, folder.name);
+  if(directory) {
+    var subFolders = $(folder).children("folder");
+    
+    subFolders.each(function(f) {exportViews(f, directory)});
+    
+    $(folder).children().not(subFolders).each(function(v) {
+      var pngFile = directory+File.separator+v.name+".png";
+      if(isValidPath(pngFile)) {
+        $.fs.writeFile(pngFile, $.model.renderViewAsBase64(v, "PNG", {scale: 1, margin: 10}), "BASE64");
+      } else {
+        console.log('-> Something went wrong when trying to create an image named "', v.name, '" under "', directory, '"');
+      }
+    });
+    
+  } else {
+    console.log('-> Something went wrong when trying to create a new folder named "', folder.name, '" under "', parentDirectory, '"');
+  }
+}
+
+function mkdir(parentDirectory, name) {
+  var directory = new File(parentDirectory, name);
+  if(directory.isDirectory() || directory.mkdir()) { // File#mkdir() returns false if there was any issue
+    return directory.getPath();
+  } else {
+    return false;
+  }
+}
+
+function isValidPath(path) {
+  try {
+    new File(path).getCanonicalPath();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}

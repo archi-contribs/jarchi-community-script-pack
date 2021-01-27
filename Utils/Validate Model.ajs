@@ -1,0 +1,30 @@
+console.show();
+console.clear();
+
+
+$('relationship').each(function(r) {
+  if (! $.model.isAllowedRelationship(r.type, r.source.type, r.target.type)) {
+    // One way to solve the issue is to delete the model realtionship
+    console.log(r.type, " with id=", r.id, " from ", r.source.type, " '", r.source.name, "' to ", r.target.type, " '", r.target.name, "' is not valid");
+    // One way to solve the issue is to delete the relationship:
+    // r.delete();
+  }
+});
+
+$('view').find('relationship').each(function(connection) {
+  var relation = connection.concept;
+  var relationSource = relation.source;
+  var relationTarget = relation.target;
+
+  var connectionSource = connection.source.concept;
+  var connectionTarget = connection.target.concept;
+  
+  if (connectionSource.id != relationSource.id || connectionTarget.id != relationTarget.id) {
+    // Another approach could be to create another model relationship and to add it to the view instead of the unvalid one (more complicated to implement)
+    console.log("Visual connection", relation.type, " with id=", relation.id, " from ", connectionSource.type, " '", connectionSource.name, "' to ", connectionTarget.type, " '", connectionTarget.name, "' does not match underlying model relationship");
+    // One way to solve the issue is to delete the visual connection:
+    // connection.delete();
+  }
+});
+
+console.log("End of validation");
