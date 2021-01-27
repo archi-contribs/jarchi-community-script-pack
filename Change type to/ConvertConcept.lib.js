@@ -4,17 +4,24 @@ function convert(filename) {
     var relaxed = window.confirm('By default, selected concepts are converted, and relationships involving them that would no more be valid are converted to associations. Click OK for this behavior or Cancel if you want a "strict" mode where relationships are not changed.');
 
     $(selection).each(function (o) {
-        $(concept(o)).outRels().each(function (r) {
-            if (!$.model.isAllowedRelationship(r.type, convertToType, r.target.type)) {
-                checkAndConvertRelationship(r, relaxed);
-            }
-        });
-        $(concept(o)).inRels().each(function (r) {
-            if (!$.model.isAllowedRelationship(r.type, r.source.type, convertToType)) {
-                checkAndConvertRelationship(r, relaxed);
-            }
-        });
-        concept(o).concept.type = convertToType;
+        var concept = getConcept(o);
+
+        if(concept) {
+            $(concept).outRels().each(function (r) {
+                if (!$.model.isAllowedRelationship(r.type, convertToType, r.target.type)) {
+                    checkAndConvertRelationship(r, relaxed);
+                }
+            });
+    
+            $(concept).inRels().each(function (r) {
+                if (!$.model.isAllowedRelationship(r.type, r.source.type, convertToType)) {
+                    checkAndConvertRelationship(r, relaxed);
+                }
+            });
+    
+            concept.type = convertToType;
+        }
+
     });
 }
 
@@ -28,8 +35,8 @@ function checkAndConvertRelationship(r, relaxed) {
     }
 }
 
-function concept(o) {
-    return o.concept ? o.concept : o;
+function getConcept(o) {
+    return o.concept ? o.concept : null;
 }
 
 function getTypeFromFilename(fileName) {
