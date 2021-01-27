@@ -1,7 +1,2 @@
-load(__DIR__+"/../ConvertConcept.lib.js");
-
-convert(selection, getTypeFromFilename());
-
-function getTypeFromFilename() {
-  return __FILE__.replace(/^.*\//, '').replace(/\.ajs$/, '').replace(/%20/, '-').toLowerCase();
-}
+load(__DIR__ + "/../ConvertConcept.lib.js");
+convert(__FILE__);
