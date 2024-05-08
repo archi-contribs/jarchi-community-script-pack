@@ -1,0 +1,81 @@
+﻿var File = Java.type("java.io.File");
+
+console.show();
+console.clear();
+
+var dirPath = window.promptOpenDirectory({ title: "Export into..." });
+
+selection.filter("view").each(function(view) {
+  console.log("export view", view.name)
+  exportView(dirPath, view)
+})
+
+selection.filter("folder").each(function(folder) {
+  console.log('Starting export of "', folder.name, '" under "', dirPath, '"...');
+  exportViews(folder, dirPath);
+});
+
+console.log('OK');
+
+/*--------------------------------------------------------------------*/
+
+function exportViews(folder, parentDirectory) {
+  var directory = mkdir(parentDirectory, folder.name);
+  if(directory) {
+    var subFolders = $(folder).children("folder");
+    subFolders.each(function(f) {exportViews(f, directory)});
+    $(folder).children().not(subFolders).each(function(v) {
+      exportView(directory, v)
+    });
+  } else {
+    console.log('-> Something went wrong when trying to create a new folder named "', folder.name, '" under "', parentDirectory, '"');
+  }
+}
+
+
+function exportView(directory, v) {
+  var dt = formatDate(new Date())
+
+  var pdfFile = directory+File.separator + dt +" " + v.name+".pdf";
+  console.log(pdfFile)
+  if(isValidPath(pdfFile)) {
+    $.model.renderViewToPDF(v, pdfFile);
+  } else {
+    console.log('-> Something went wrong when trying to create an image named "', v.name, '" under "', directory, '"');
+  }
+}
+
+
+function mkdir(parentDirectory, name) {
+  var directory = new File(parentDirectory, name);
+  if(directory.isDirectory() || directory.mkdir()) { // File#mkdir() returns false if there was any issue
+    return directory.getPath();
+  } else {
+    return false;
+  }
+}
+
+
+function isValidPath(path) {
+  try {
+    new File(path).getCanonicalPath();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+
+function formatDate(date) {
+    var d = new Date(date),
+        month = '' + (d.getMonth() + 1),
+        day = '' + d.getDate(),
+        year = d.getFullYear();
+
+    if (month.length < 2) 
+        month = '0' + month;
+    if (day.length < 2) 
+        day = '0' + day;
+
+    return [year, month, day].join('-');
+}
