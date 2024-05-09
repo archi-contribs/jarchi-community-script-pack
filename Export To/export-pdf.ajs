@@ -1,4 +1,9 @@
-﻿var File = Java.type("java.io.File");
+﻿/* Export user selected views and view folders to pdf files with date prefix
+   e.g. "2024-05-09 View Name.pdf"
+   
+*/
+
+var File = Java.type("java.io.File");
 
 console.show();
 console.clear();
@@ -6,12 +11,10 @@ console.clear();
 var dirPath = window.promptOpenDirectory({ title: "Export into..." });
 
 selection.filter("view").each(function(view) {
-  console.log("export view", view.name)
   exportView(dirPath, view)
 })
 
 selection.filter("folder").each(function(folder) {
-  console.log('Starting export of "', folder.name, '" under "', dirPath, '"...');
   exportViews(folder, dirPath);
 });
 
@@ -23,25 +26,29 @@ function exportViews(folder, parentDirectory) {
   var directory = mkdir(parentDirectory, folder.name);
   if(directory) {
     var subFolders = $(folder).children("folder");
-    subFolders.each(function(f) {exportViews(f, directory)});
+    subFolders.each(function(f) { exportViews(f, directory) });
     $(folder).children().not(subFolders).each(function(v) {
-      exportView(directory, v)
+      if (v.type == 'archimate-diagram-model') {
+        exportView(directory, v)
+      } else { 
+        console.log('->', v.type, 'elements are not supported. Please select Views folder or its subfolders')
+      }
     });
   } else {
-    console.log('-> Something went wrong when trying to create a new folder named "', folder.name, '" under "', parentDirectory, '"');
+    console.log('-> Can\'t create folder. Check that the file is not opened in another application, view name is valid for file name, and you have write permissions. Folder name:"', folder.name, '" under "', parentDirectory, '"');
   }
 }
 
 
 function exportView(directory, v) {
   var dt = formatDate(new Date())
-
-  var pdfFile = directory+File.separator + dt +" " + v.name+".pdf";
-  console.log(pdfFile)
+  var pdfFileName = dt +" " + v.name+".pdf";
+  var pdfFile = directory + File.separator + pdfFileName;
+  console.log(pdfFileName)
   if(isValidPath(pdfFile)) {
     $.model.renderViewToPDF(v, pdfFile);
   } else {
-    console.log('-> Something went wrong when trying to create an image named "', v.name, '" under "', directory, '"');
+    console.log('-> Something went wrong when trying to create an PDF file named "', v.name, '" under "', directory, '"');
   }
 }
 
