@@ -1,0 +1,88 @@
+﻿/* Export user selected views and view folders to pdf files with date prefix
+   e.g. "2024-05-09 View Name.pdf"
+   
+*/
+
+var File = Java.type("java.io.File");
+
+console.show();
+console.clear();
+
+var dirPath = window.promptOpenDirectory({ title: "Export into..." });
+
+selection.filter("view").each(function(view) {
+  exportView(dirPath, view)
+})
+
+selection.filter("folder").each(function(folder) {
+  exportViews(folder, dirPath);
+});
+
+console.log('OK');
+
+/*--------------------------------------------------------------------*/
+
+function exportViews(folder, parentDirectory) {
+  var directory = mkdir(parentDirectory, folder.name);
+  if(directory) {
+    var subFolders = $(folder).children("folder");
+    subFolders.each(function(f) { exportViews(f, directory) });
+    $(folder).children().not(subFolders).each(function(v) {
+      if (v.type == 'archimate-diagram-model') {
+        exportView(directory, v)
+      } else { 
+        console.log('->', v.type, 'elements are not supported. Please select Views folder or its subfolders')
+      }
+    });
+  } else {
+    console.log('-> Can\'t create folder. Check that the file is not opened in another application, view name is valid for file name, and you have write permissions. Folder name:"', folder.name, '" under "', parentDirectory, '"');
+  }
+}
+
+
+function exportView(directory, v) {
+  var dt = formatDate(new Date())
+  var pdfFileName = dt +" " + v.name+".pdf";
+  var pdfFile = directory + File.separator + pdfFileName;
+  console.log(pdfFileName)
+  if(isValidPath(pdfFile)) {
+    $.model.renderViewToPDF(v, pdfFile);
+  } else {
+    console.log('-> Something went wrong when trying to create an PDF file named "', v.name, '" under "', directory, '"');
+  }
+}
+
+
+function mkdir(parentDirectory, name) {
+  var directory = new File(parentDirectory, name);
+  if(directory.isDirectory() || directory.mkdir()) { // File#mkdir() returns false if there was any issue
+    return directory.getPath();
+  } else {
+    return false;
+  }
+}
+
+
+function isValidPath(path) {
+  try {
+    new File(path).getCanonicalPath();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+
+function formatDate(date) {
+    var d = new Date(date),
+        month = '' + (d.getMonth() + 1),
+        day = '' + d.getDate(),
+        year = d.getFullYear();
+
+    if (month.length < 2) 
+        month = '0' + month;
+    if (day.length < 2) 
+        day = '0' + day;
+
+    return [year, month, day].join('-');
+}
